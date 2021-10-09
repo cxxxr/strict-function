@@ -5,7 +5,14 @@
            #:strict-invalid-input
            #:strict-invalid-output
            #:strict-invalid-multivalued-number
-           #:define-strict-function))
+           #:define-strict-function
+
+           #:strict-unexpected-condition-error-expected-function-name
+           #:strict-unexpected-condition-error-expected-conditions
+           #:strict-unexpected-condition-error-actual-condition
+
+           #:clear-unexpected-conditions
+           #:collect-unexpected-conditions))
 (in-package #:strict-function)
 
 (define-condition strict-function-error (simple-error) ())
@@ -45,21 +52,19 @@
   ((function-name
     :initarg :function-name
     :reader strict-unexpected-condition-error-expected-function-name)
-   (conditions
-    :initarg :conditions
-    :reader strict-unexpected-condition-error-expected-condition-names)
-   (condition
-    :initarg :condition
+   (expected-conditions
+    :initarg :expected-conditions
+    :reader strict-unexpected-condition-error-expected-conditions)
+   (actual-condition
+    :initarg :actual-condition
     :reader strict-unexpected-condition-error-actual-condition)
    (backtrace
-    :initarg :backtrace
-    :reader strict-unexpected-condition-error-backtrace))
+    :initarg :backtrace))
   (:report (lambda (c s)
-             (with-slots (function-name conditions condition) c
-               (format s "unexpected conditions in ~S, expected = ~S, actual = ~S"
-                       function-name
-                       `(or ,@conditions)
-                       (type-of condition))))))
+             (format s "unexpected conditions in ~S, expected = ~S, actual = ~S"
+                     (strict-unexpected-condition-error-expected-function-name c)
+                     `(or ,@(strict-unexpected-condition-error-expected-conditions c))
+                     (type-of (strict-unexpected-condition-error-actual-condition c))))))
 
 (defun validate-input (var value type)
   (unless (typep value type)
@@ -87,22 +92,25 @@
     (pushnew function-name *unexpected-condition-error-occurred-functions*)
     (push (make-condition 'strict-unexpected-condition-error
                           :function-name function-name
-                          :conditions expected-conditions
-                          :condition actual-condition
+                          :expected-conditions expected-conditions
+                          :actual-condition actual-condition
                           :backtrace (with-output-to-string (out)
                                        (uiop:print-backtrace :stream out)))
           (get function-name 'unexpected-conditions))))
 
-(defun clear-unexpected-condition-occured-functions ()
+(defun clear-unexpected-conditions ()
   (dolist (fn-name *unexpected-condition-error-occurred-functions*)
     (setf (get fn-name 'unexpected-conditions) '()))
   (setf *unexpected-condition-error-occurred-functions* '()))
 
-(defun report-unexpected-condition-occured-functions (&optional (stream *error-output*))
-  (dolist (fn-name *unexpected-condition-error-occurred-functions*)
-    (dolist (condition (get fn-name 'unexpected-conditions))
-      (format stream "~&~A~%" condition)
-      (write-line (strict-unexpected-condition-error-backtrace condition)))))
+(defun collect-unexpected-conditions (&optional (function-name nil function-name-p))
+  (let ((fn-names
+          (if function-name-p
+              (progn
+                (list function-name))
+              *unexpected-condition-error-occurred-functions*)))
+    (loop :for fn-name :in fn-names
+          :append (get fn-name 'unexpected-conditions))))
 
 (defun lambda-list-keyword-p (x)
   (member x lambda-list-keywords))
@@ -260,6 +268,7 @@
                                         conditions
                                         use-supplied-vars)
                                   &body body)
+  (check-type conditions list)
   (multiple-value-bind (lambda-list param-types param-docs)
       (parse-inputs inputs)
     (declare (ignore param-docs))

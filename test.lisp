@@ -241,5 +241,33 @@
   (ok (equal "foo" (func-aux-2)))
   (ok (equal (list "foo" 12) (func-aux-3))))
 
-;; TODO:
-;; - condition test
+;;;
+(define-condition strict-function-test-error-1 (error) ()
+  (:report "raise strict-function-test-error-1"))
+
+(define-condition strict-function-test-error-2 (error) ()
+  (:report "raise strict-function-test-error-2"))
+
+(define-strict-function func-conditions-1 (:inputs ((op (member :one :two)))
+                                          :conditions (strict-function-test-error-1))
+  (ecase op
+    (:one (error 'strict-function-test-error-1))
+    (:two (error 'strict-function-test-error-2))))
+
+(define-test conditions-parameter-test
+  (testing "expected condition"
+    (clear-unexpected-conditions)
+    (ok (signals (func-conditions-1 :one) 'strict-function-test-error-1))
+    (ok (null (collect-unexpected-conditions 'func-conditions-1)))
+    (ok (null (collect-unexpected-conditions))))
+  (testing "unexpected condition"
+    (clear-unexpected-conditions)
+    (ok (signals (func-conditions-1 :two) 'strict-function-test-error-2))
+    (let ((conditions (collect-unexpected-conditions 'func-conditions-1)))
+      (ok (length= conditions 1))
+      (let ((c (first conditions)))
+        (ok (eq 'func-conditions-1 (strict-unexpected-condition-error-expected-function-name c)))
+        (ok (equal '(strict-function-test-error-1)
+                   (strict-unexpected-condition-error-expected-conditions c)))
+        (ok (typep (strict-unexpected-condition-error-actual-condition c) 
+                   'strict-function-test-error-2))))))
