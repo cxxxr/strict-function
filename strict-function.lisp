@@ -164,7 +164,9 @@
 
 (defun make-nth-functions (n)
   (loop :for i :from 1 :repeat n
-        :collect (intern (string-upcase (format nil "~:R" i)))))
+        :for nth-fn := (intern (string-upcase (format nil "~:R" i)))
+        :do (assert (fdefinition nth-fn))
+        :collect nth-fn))
 
 (defmacro validate-multiple-outputs (body types)
   (with-unique-names (results)
