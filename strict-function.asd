@@ -1,4 +1,7 @@
 (defsystem "strict-function"
+  :license "MIT"
+  :author "cxxxr"
+  :description "Utility of function definition"
   :depends-on ("alexandria"
                "trivia")
   :components ((:file "strict-function"))
