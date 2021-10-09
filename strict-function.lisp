@@ -79,7 +79,7 @@
            :expected-type outputs
            :value result)))
 
-(defun %validate-number-of-outputs (values n)
+(defun validate-number-of-outputs (values n)
   (unless (length= values n)
     (error 'strict-invalid-multivalued-number
            :expected-nth-values n
@@ -87,7 +87,7 @@
 
 (defvar *unexpected-condition-error-occurred-functions* '())
 
-(defun %test-conditions (actual-condition expected-conditions function-name)
+(defun validate-conditions (actual-condition expected-conditions function-name)
   (unless (some (curry #'typep actual-condition) expected-conditions)
     (pushnew function-name *unexpected-condition-error-occurred-functions*)
     (push (make-condition 'strict-unexpected-condition-error
@@ -156,7 +156,10 @@
   (with-unique-names (c)
     (if (null conditions)
         body
-        `(handler-bind ((error (lambda (,c) (%test-conditions ,c ',conditions ',function-name))))
+        `(handler-bind ((error (lambda (,c)
+                                 (validate-conditions ,c
+                                                      ',conditions
+                                                      ',function-name))))
            ,body))))
 
 (defun make-nth-functions (n)
@@ -167,7 +170,7 @@
   (with-unique-names (results)
     (let ((n-values (length types)))
       `(let ((,results (multiple-value-list ,body)))
-         (%validate-number-of-outputs ,results ,n-values)
+         (validate-number-of-outputs ,results ,n-values)
          ,@(loop :for nth-fn :in (make-nth-functions n-values)
                  :for type :in types
                  :collect `(validate-outputs (,nth-fn ,results) ',type))
