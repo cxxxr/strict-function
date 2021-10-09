@@ -22,4 +22,4 @@ jobs:
       run: |
         export PATH=$HOME/.roswell/bin:$PATH
         ros install rove
-        rove ~/.roswell/cxxxr/strict-function/strict-function.asd
+        rove ~/.roswell/local-projects/cxxxr/strict-function/strict-function.asd
